@@ -19,6 +19,12 @@ async fn index(db_con: Connection<Db>) -> Result<String, String> {
     Ok(format!("{:?}", products))
 }
 
+#[post("/new")]
+async fn add(db_con: Connection<Db>) -> Result<String, String> {
+    let product = repo::create(db_con).await;
+    Ok(format!("{:?}", product))
+}
+
 #[launch]
 async fn rocket() -> _ {
     dotenv().ok();
@@ -26,5 +32,5 @@ async fn rocket() -> _ {
     rocket::build()
         .attach(Db::init())
         .attach(AdHoc::config::<Config>())
-        .mount("/", routes![index])
+        .mount("/", routes![index, add])
 }

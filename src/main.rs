@@ -29,8 +29,8 @@ async fn add(mut db_con: Connection<Db>) -> Result<String, String> {
     let user = repo::create_user(&mut txn).await;
     let product = repo::create(&mut txn).await;
 
-    txn.rollback().await.unwrap();
-    // txn.commit().await.unwrap();
+    // txn.rollback().await.unwrap();
+    txn.commit().await.unwrap();
 
     Ok(format!("product:{:?}, user:{:?}", product, user))
 }

@@ -12,17 +12,26 @@ use dotenv::dotenv;
 use rocket::fairing::AdHoc;
 use rocket_db_pools::Connection;
 use rocket_db_pools::Database;
+use sqlx::Acquire;
 
 #[get("/")]
-async fn index(db_con: Connection<Db>) -> Result<String, String> {
-    let products = repo::find_all(db_con).await;
+async fn index(mut db_con: Connection<Db>) -> Result<String, String> {
+    let con = db_con.acquire().await.unwrap();
+    let products = repo::find_all(con).await;
     Ok(format!("{:?}", products))
 }
 
 #[post("/new")]
-async fn add(db_con: Connection<Db>) -> Result<String, String> {
-    let product = repo::create(db_con).await;
-    Ok(format!("{:?}", product))
+async fn add(mut db_con: Connection<Db>) -> Result<String, String> {
+    let con = db_con.acquire().await.unwrap();
+    let mut txn = con.begin().await.unwrap();
+
+    let user = repo::create_user(&mut txn).await;
+    let product = repo::create(&mut txn).await;
+
+    txn.commit().await.unwrap();
+
+    Ok(format!("product:{:?}, user:{:?}", product, user))
 }
 
 #[launch]

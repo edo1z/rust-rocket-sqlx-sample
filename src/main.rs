@@ -14,18 +14,16 @@ use rocket_db_pools::{Connection, Database};
 use sqlx::Acquire;
 
 #[get("/")]
-async fn index(mut db_con: Connection<Db>) -> Result<String, String> {
-    let con = db_con.acquire().await.unwrap();
-    let products = repo::find_all_products(con).await;
-    let con2 = db_con.acquire().await.unwrap();
-    let users = repo::find_all_users(con2).await;
+async fn index(db_con: Connection<Db>) -> Result<String, String> {
+    let mut pool = db_con.into_inner();
+    let products = repo::find_all_products(&mut pool).await;
+    let users = repo::find_all_users(&mut pool).await;
     Ok(format!("products: {:?} usres: {:?}", products, users))
 }
 
 #[post("/new")]
 async fn add(mut db_con: Connection<Db>) -> Result<String, String> {
-    let con = db_con.acquire().await.unwrap();
-    let mut txn = con.begin().await.unwrap();
+    let mut txn = db_con.begin().await.unwrap();
 
     let user = repo::create_user(&mut txn).await;
     let product = repo::create(&mut txn).await;

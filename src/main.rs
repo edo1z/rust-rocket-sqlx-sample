@@ -34,6 +34,11 @@ async fn add(mut db_con: Connection<Db>) -> Result<String, String> {
     Ok(format!("product:{:?}, user:{:?}", product, user))
 }
 
+#[get("/hoge")]
+async fn hoge() -> &'static str {
+    "hoge"
+}
+
 #[launch]
 async fn rocket() -> _ {
     dotenv().ok();
@@ -41,5 +46,32 @@ async fn rocket() -> _ {
     rocket::build()
         .attach(Db::init())
         .attach(AdHoc::config::<Config>())
-        .mount("/", routes![index, add])
+        .mount("/", routes![index, add, hoge])
+}
+
+#[cfg(test)]
+mod tests {
+    use rocket::http::Status;
+    use rocket::local::asynchronous::Client;
+
+    #[rocket::async_test]
+    async fn test_hoge() {
+        // Rocketインスタンスを作成
+        let rocket = rocket::build().mount("/", routes![super::hoge]);
+
+        // テスト用のClientを作成
+        let client = Client::tracked(rocket)
+            .await
+            .expect("valid rocket instance");
+
+        // GET /hoge リクエストを模倣
+        let response = client.get("/hoge").dispatch().await;
+
+        // レスポンスステータスが200 OKであることを確認
+        assert_eq!(response.status(), Status::Ok);
+
+        // レスポンスボディが "hoge" であることを確認
+        let body_str = response.into_string().await.expect("valid body string");
+        assert_eq!(body_str, "hoge");
+    }
 }

@@ -2,7 +2,9 @@ use crate::repo;
 use sqlx::pool::PoolConnection;
 use sqlx::Acquire;
 use sqlx::Postgres;
+use mockall::automock;
 
+#[automock]
 #[async_trait]
 pub trait UseCase {
     async fn get_all_products_and_users(

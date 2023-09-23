@@ -8,7 +8,8 @@ A clean architecture style Sample using Rust's Rocket, sqlx and PostgreSQL.
 git clone https://github.com/net3i/rust-rocket-sqlx-sample
 cd rust-rocket-sqlx-sample
 docker-compose up -d
-sqlx migrate run
+cp .env.example .env
+sh migrate.sh
 cargo test
 cargo run
 ```

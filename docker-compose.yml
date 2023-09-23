@@ -12,5 +12,19 @@ services:
       - hoge-db-data:/var/lib/postgresql/data
     ports:
       - 5432:5432
+
+  test_db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: user
+      POSTGRES_DB: test_hoge
+    volumes:
+      - test-hoge-db-data:/var/lib/postgresql/data
+    ports:
+      - 5433:5432
+
 volumes:
   hoge-db-data:
+  test-hoge-db-data:

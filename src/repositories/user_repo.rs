@@ -38,3 +38,28 @@ impl UserRepo for UserRepoImpl {
         Ok(user)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test::db::create_db_con_for_test;
+    use crate::test::fixture::user::user_fixture;
+
+    #[rocket::async_test]
+    async fn test_find_all() {
+        let mut db_con = create_db_con_for_test().await.unwrap();
+        let user_repo = UserRepoImpl::new();
+        let users = user_repo.find_all(&mut db_con).await;
+        assert!(users.is_ok());
+        assert_eq!(users.unwrap().len(), 1);
+    }
+
+    #[rocket::async_test]
+    async fn test_create() {
+        let mut db_con = create_db_con_for_test().await.unwrap();
+        let user_repo = UserRepoImpl::new();
+        let user = user_repo.create(&mut db_con).await;
+        assert!(user.is_ok());
+        assert_eq!(user.unwrap().name, user_fixture(1).name);
+    }
+}

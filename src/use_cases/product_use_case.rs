@@ -1,54 +1,31 @@
-use crate::app_state::AppState;
+use crate::db::DbCon;
+use crate::repositories::repositories::Repos;
 use mockall::automock;
-use sqlx::pool::PoolConnection;
-use sqlx::Acquire;
-use sqlx::Postgres;
 
-#[automock]
-#[async_trait]
-pub trait ProductUseCase {
-    async fn get_all(
-        &self,
-        pool: &mut PoolConnection<Postgres>,
-        app: &AppState,
-    ) -> Result<String, sqlx::Error>;
-    async fn create(
-        &self,
-        pool: &mut PoolConnection<Postgres>,
-        app: &AppState,
-    ) -> Result<String, sqlx::Error>;
-}
+pub struct ProductUseCaseImpl {}
 
-pub struct ProductUseCaseImpl;
 impl ProductUseCaseImpl {
     pub fn new() -> Self {
         Self {}
     }
 }
 
+#[automock]
+#[async_trait]
+pub trait ProductUseCase: Send + Sync {
+    async fn get_all(&self, repos: &Repos, db_con: &mut DbCon) -> Result<String, sqlx::Error>;
+    async fn create(&self, repos: &Repos, db_con: &mut DbCon) -> Result<String, sqlx::Error>;
+}
+
 #[async_trait]
 impl ProductUseCase for ProductUseCaseImpl {
-    async fn get_all(
-        &self,
-        pool: &mut PoolConnection<Postgres>,
-        app: &AppState,
-    ) -> Result<String, sqlx::Error> {
-        let products = app.repo.product.find_all(&mut *pool).await?;
+    async fn get_all(&self, repos: &Repos, db_con: &mut DbCon) -> Result<String, sqlx::Error> {
+        let products = repos.product.find_all(&mut *db_con).await?;
         Ok(format!("products: {:?}", products))
     }
 
-    async fn create(
-        &self,
-        pool: &mut PoolConnection<Postgres>,
-        app: &AppState,
-    ) -> Result<String, sqlx::Error> {
-        let mut txn = pool.begin().await?;
-
-        let product = app.repo.product.create_with_transaction(&mut txn).await?;
-
-        // txn.rollback().await.unwrap();
-        txn.commit().await.unwrap();
-
+    async fn create(&self, repos: &Repos, db_con: &mut DbCon) -> Result<String, sqlx::Error> {
+        let product = repos.product.create(&mut *db_con).await?;
         Ok(format!("product:{:?}", product))
     }
 }

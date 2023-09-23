@@ -1,24 +1,21 @@
-use crate::app_state::AppState;
-use crate::db::Db;
-use rocket::{http::Status, State};
-use rocket_db_pools::Connection;
+use crate::app::AppState;
+use crate::db::DbCon;
+use rocket::http::Status;
 
 #[get("/")]
-async fn index(db_con: Connection<Db>, app: &State<AppState>) -> Result<String, (Status, String)> {
-    let mut pool = db_con.into_inner();
-    app.use_case
+async fn index(app: &AppState, mut db: DbCon) -> Result<String, (Status, String)> {
+    app.use_cases
         .user
-        .get_all(&mut pool, &app)
+        .get_all(&app.repos, &mut db)
         .await
         .map_err(|_| (Status::InternalServerError, "error".to_string()))
 }
 
 #[post("/new")]
-async fn add(db_con: Connection<Db>, app: &State<AppState>) -> Result<String, String> {
-    let mut pool = db_con.into_inner();
-    app.use_case
+async fn add(app: &AppState, mut db: DbCon) -> Result<String, String> {
+    app.use_cases
         .user
-        .create(&mut pool, &app)
+        .create(&app.repos, &mut db)
         .await
         .map_err(|_| "error".to_string())
 }
@@ -29,14 +26,15 @@ pub fn routes() -> Vec<rocket::Route> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::config::Config;
-    use crate::test::app_state::create_app_state_for_test;
+    use crate::db::Db;
+    use crate::test::app::create_app_for_test;
     use crate::use_cases::user_use_case::MockUserUseCase;
     use rocket::fairing::AdHoc;
     use rocket::http::Status;
     use rocket::local::asynchronous::Client;
     use rocket_db_pools::Database;
+    use std::sync::Arc;
 
     #[rocket::async_test]
     async fn test_index_success() {
@@ -45,11 +43,11 @@ mod tests {
             .expect_get_all()
             .returning(|_, _| Ok("success".to_string()));
 
-        let mut app_state = create_app_state_for_test();
-        app_state.use_case.user = Box::new(mock_user_use_case);
+        let mut app_state = create_app_for_test();
+        app_state.use_cases.user = Box::new(mock_user_use_case);
 
         let rocket = rocket::build()
-            .manage(app_state)
+            .manage(Arc::new(app_state))
             .attach(Db::init())
             .attach(AdHoc::config::<Config>())
             .mount("/", routes![super::index]);
@@ -70,11 +68,11 @@ mod tests {
             .expect_get_all()
             .returning(|_, _| Err(sqlx::Error::RowNotFound));
 
-        let mut app_state = create_app_state_for_test();
-        app_state.use_case.user = Box::new(mock_user_use_case);
+        let mut app_state = create_app_for_test();
+        app_state.use_cases.user = Box::new(mock_user_use_case);
 
         let rocket = rocket::build()
-            .manage(app_state)
+            .manage(Arc::new(app_state))
             .attach(Db::init())
             .attach(AdHoc::config::<Config>())
             .mount("/", routes![super::index]);

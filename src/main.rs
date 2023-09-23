@@ -23,6 +23,10 @@ mod repositories {
 mod test {
     pub mod app;
     pub mod db;
+    pub mod fixture {
+        pub mod user;
+        pub mod product;
+    }
 }
 
 use crate::config::Config;

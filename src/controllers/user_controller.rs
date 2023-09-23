@@ -1,23 +1,27 @@
 use crate::app::AppState;
-use crate::db::DbCon;
+use crate::db::ConnectionDb;
 use rocket::http::Status;
 
 #[get("/")]
-async fn index(app: &AppState, mut db: DbCon) -> Result<String, (Status, String)> {
-    app.use_cases
+async fn index(app: &AppState, mut db: ConnectionDb) -> Result<String, (Status, String)> {
+    let users = app
+        .use_cases
         .user
         .get_all(&app.repos, &mut db)
         .await
-        .map_err(|_| (Status::InternalServerError, "error".to_string()))
+        .map_err(|_| (Status::InternalServerError, "error".to_string()))?;
+    Ok(users.len().to_string())
 }
 
 #[post("/new")]
-async fn add(app: &AppState, mut db: DbCon) -> Result<String, String> {
-    app.use_cases
+async fn add(app: &AppState, mut db: ConnectionDb) -> Result<String, String> {
+    let user = app
+        .use_cases
         .user
         .create(&app.repos, &mut db)
         .await
-        .map_err(|_| "error".to_string())
+        .map_err(|_| "error".to_string())?;
+    Ok(user.name)
 }
 
 pub fn routes() -> Vec<rocket::Route> {
@@ -29,6 +33,7 @@ mod tests {
     use crate::config::Config;
     use crate::db::Db;
     use crate::test::app::create_app_for_test;
+    use crate::test::fixture::user::users_fixture;
     use crate::use_cases::user_use_case::MockUserUseCase;
     use rocket::fairing::AdHoc;
     use rocket::http::Status;
@@ -41,7 +46,7 @@ mod tests {
         let mut mock_user_use_case = MockUserUseCase::new();
         mock_user_use_case
             .expect_get_all()
-            .returning(|_, _| Ok("success".to_string()));
+            .returning(|_, _| Ok(users_fixture(5)));
 
         let mut app_state = create_app_for_test();
         app_state.use_cases.user = Box::new(mock_user_use_case);
@@ -58,7 +63,7 @@ mod tests {
 
         assert_eq!(response.status(), Status::Ok);
         let body_str = response.into_string().await.expect("valid body string");
-        assert_eq!(body_str, "success");
+        assert_eq!(body_str, "5");
     }
 
     #[rocket::async_test]

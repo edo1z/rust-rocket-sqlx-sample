@@ -1,9 +1,9 @@
 use crate::app::AppState;
-use crate::db::DbCon;
+use crate::db::ConnectionDb;
 use rocket::http::Status;
 
 #[get("/")]
-async fn index(app: &AppState, mut db: DbCon) -> Result<String, (Status, String)> {
+async fn index(app: &AppState, mut db: ConnectionDb) -> Result<String, (Status, String)> {
     app.use_cases
         .product
         .get_all(&app.repos, &mut db)
@@ -12,7 +12,7 @@ async fn index(app: &AppState, mut db: DbCon) -> Result<String, (Status, String)
 }
 
 #[post("/new")]
-async fn add(app: &AppState, mut db: DbCon) -> Result<String, String> {
+async fn add(app: &AppState, mut db: ConnectionDb) -> Result<String, String> {
     app.use_cases
         .product
         .create(&app.repos, &mut db)

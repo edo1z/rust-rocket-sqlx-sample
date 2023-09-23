@@ -10,6 +10,6 @@ cd rust-rocket-sqlx-sample
 docker-compose up -d
 cp .env.example .env
 sh migrate.sh
-cargo test
+cargo test -- --test-threads=1
 cargo run
 ```

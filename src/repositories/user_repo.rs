@@ -16,6 +16,7 @@ impl UserRepoImpl {
 pub trait UserRepo: Send + Sync {
     async fn find_all(&self, con: &mut DbCon) -> Result<Vec<User>, sqlx::Error>;
     async fn create(&self, con: &mut DbCon) -> Result<User, sqlx::Error>;
+    async fn truncate(&self, con: &mut DbCon) -> Result<(), sqlx::Error>;
 }
 
 #[async_trait]
@@ -37,29 +38,45 @@ impl UserRepo for UserRepoImpl {
         .await?;
         Ok(user)
     }
+
+    async fn truncate(&self, con: &mut DbCon) -> Result<(), sqlx::Error> {
+        sqlx::query!("TRUNCATE users RESTART IDENTITY").execute(&mut **con).await?;
+        Ok(())
+    }
 }
+
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::test::db::create_db_con_for_test;
-    use crate::test::fixture::user::user_fixture;
 
     #[rocket::async_test]
     async fn test_find_all() {
         let mut db_con = create_db_con_for_test().await.unwrap();
         let user_repo = UserRepoImpl::new();
+
+        // save 3user
+        user_repo.truncate(&mut db_con).await.unwrap();
+        for _ in 0..3 { user_repo.create(&mut db_con).await.unwrap(); }
+
+        // test
         let users = user_repo.find_all(&mut db_con).await;
         assert!(users.is_ok());
-        assert_eq!(users.unwrap().len(), 1);
+        assert_eq!(users.unwrap().len(), 3);
     }
 
     #[rocket::async_test]
     async fn test_create() {
         let mut db_con = create_db_con_for_test().await.unwrap();
         let user_repo = UserRepoImpl::new();
+
+        user_repo.truncate(&mut db_con).await.unwrap();
+
+        // test
         let user = user_repo.create(&mut db_con).await;
         assert!(user.is_ok());
-        assert_eq!(user.unwrap().name, user_fixture(1).name);
+        assert_eq!(user.unwrap().name, "hoge taro");
+
     }
 }

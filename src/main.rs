@@ -24,15 +24,15 @@ mod test {
     pub mod app;
     pub mod db;
     pub mod fixture {
-        pub mod user;
         pub mod product;
+        pub mod user;
     }
 }
 
+use crate::app::create_app;
 use crate::config::Config;
 use crate::controllers::{product_controller, user_controller};
 use crate::db::Db;
-use crate::app::create_app;
 use dotenv::dotenv;
 use rocket::fairing::AdHoc;
 use rocket_db_pools::Database;

@@ -1,7 +1,7 @@
 use crate::db::DbCon;
+use crate::model::User;
 use crate::repositories::repositories::Repos;
 use mockall::automock;
-use crate::model::User;
 
 pub struct UserUseCaseImpl {}
 impl UserUseCaseImpl {

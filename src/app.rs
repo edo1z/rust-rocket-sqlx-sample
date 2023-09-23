@@ -1,7 +1,7 @@
 use crate::repositories::repositories::{create_repos, Repos};
 use crate::use_cases::use_cases::{create_use_cases, UseCases};
-use std::sync::Arc;
 use rocket::State;
+use std::sync::Arc;
 
 pub type AppState = State<Arc<App>>;
 

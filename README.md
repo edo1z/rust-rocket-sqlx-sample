@@ -3,7 +3,7 @@
 ![GitHub](https://img.shields.io/github/license/net3i/rust-rocket-sqlx-sample)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/net3i/rust-rocket-sqlx-sample)
 ![GitHub last commit (by committer)](https://img.shields.io/github/last-commit/net3i/rust-rocket-sqlx-sample)
-![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/net3i)
+![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/edo1z)
 
 
 A clean architecture style Sample using Rust's [Rocket](https://rocket.rs/)(v0.5), [sqlx](https://github.com/launchbadge/sqlx)(v0.6) and PostgreSQL.
@@ -11,7 +11,7 @@ A clean architecture style Sample using Rust's [Rocket](https://rocket.rs/)(v0.5
 ## How to Use
 
 ```shell
-git clone https://github.com/net3i/rust-rocket-sqlx-sample
+git clone https://github.com/edo1z/rust-rocket-sqlx-sample
 cd rust-rocket-sqlx-sample
 docker-compose up -d
 cp .env.example .env

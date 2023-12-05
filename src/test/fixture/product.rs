@@ -1,7 +1,5 @@
-#[cfg(test)]
-use crate::model::Product;
+use crate::models::product::Product;
 
-#[cfg(test)]
 pub fn product_fixture(id: usize) -> Product {
     Product {
         id: id as i32,
@@ -9,7 +7,6 @@ pub fn product_fixture(id: usize) -> Product {
     }
 }
 
-#[cfg(test)]
 pub fn products_fixture(num: usize) -> Vec<Product> {
     let mut products = vec![];
     for i in 1..num + 1 {

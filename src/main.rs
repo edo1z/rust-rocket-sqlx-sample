@@ -4,7 +4,12 @@ extern crate rocket;
 pub mod app;
 pub mod config;
 pub mod db;
-pub mod model;
+
+mod error {
+    pub mod app_error;
+    pub mod logging;
+}
+
 mod controllers {
     pub mod product_controller;
     pub mod user_controller;
@@ -15,9 +20,20 @@ mod use_cases {
     pub mod user_use_case;
 }
 mod repositories {
+    pub mod error;
     pub mod product_repo;
     pub mod repositories;
     pub mod user_repo;
+}
+
+mod models {
+    pub mod product;
+    pub mod user;
+}
+
+mod dto {
+    pub mod product_dto;
+    pub mod user_dto;
 }
 
 mod test {
@@ -45,6 +61,7 @@ async fn hoge() -> &'static str {
 #[launch]
 async fn rocket() -> _ {
     dotenv().ok();
+    tracing_subscriber::fmt::init();
 
     rocket::build()
         .attach(Db::init())

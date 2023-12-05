@@ -1,23 +1,29 @@
 use crate::app::AppState;
 use crate::db::ConnectionDb;
-use rocket::http::Status;
+use crate::dto::product_dto::ProductName;
+use crate::error::app_error::AppError;
+use crate::models::product::Product;
+use rocket::serde::json::Json;
 
 #[get("/")]
-async fn index(app: &AppState, mut db: ConnectionDb) -> Result<String, (Status, String)> {
-    app.use_cases
-        .product
-        .get_all(&app.repos, &mut db)
-        .await
-        .map_err(|_| (Status::InternalServerError, "error".to_string()))
+async fn index(app: &AppState, mut db: ConnectionDb) -> Result<Json<Vec<Product>>, AppError> {
+    let products = app.use_cases.product.get_all(&app.repos, &mut db).await?;
+    Ok(Json(products))
 }
 
-#[post("/new")]
-async fn add(app: &AppState, mut db: ConnectionDb) -> Result<String, String> {
-    app.use_cases
+#[post("/new", data = "<name>")]
+async fn add(
+    app: &AppState,
+    mut db: ConnectionDb,
+    name: Json<ProductName>,
+) -> Result<Json<Product>, AppError> {
+    let name = name.into_inner().name;
+    let product = app
+        .use_cases
         .product
-        .create(&app.repos, &mut db)
-        .await
-        .map_err(|_| "error".to_string())
+        .create(&app.repos, &mut db, &name)
+        .await?;
+    Ok(Json(product))
 }
 
 pub fn routes() -> Vec<rocket::Route> {
@@ -26,9 +32,11 @@ pub fn routes() -> Vec<rocket::Route> {
 
 #[cfg(test)]
 mod tests {
+    use crate::app_err;
     use crate::config::Config;
     use crate::db::Db;
     use crate::test::app::create_app_for_test;
+    use crate::test::fixture::product::products_fixture;
     use crate::use_cases::product_use_case::MockProductUseCase;
     use rocket::fairing::AdHoc;
     use rocket::http::Status;
@@ -41,7 +49,7 @@ mod tests {
         let mut mock_product_use_case = MockProductUseCase::new();
         mock_product_use_case
             .expect_get_all()
-            .returning(|_, _| Ok("success".to_string()));
+            .returning(|_, _| Ok(products_fixture(5)));
 
         let mut app_state = create_app_for_test();
         app_state.use_cases.product = Box::new(mock_product_use_case);
@@ -57,8 +65,6 @@ mod tests {
         let response = client.get("/").dispatch().await;
 
         assert_eq!(response.status(), Status::Ok);
-        let body_str = response.into_string().await.expect("valid body string");
-        assert_eq!(body_str, "success");
     }
 
     #[rocket::async_test]
@@ -66,7 +72,7 @@ mod tests {
         let mut mock_product_use_case = MockProductUseCase::new();
         mock_product_use_case
             .expect_get_all()
-            .returning(|_, _| Err(sqlx::Error::RowNotFound));
+            .returning(|_, _| app_err!(500, "error"));
 
         let mut app_state = create_app_for_test();
         app_state.use_cases.product = Box::new(mock_product_use_case);

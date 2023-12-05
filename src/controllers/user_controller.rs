@@ -1,35 +1,62 @@
 use crate::app::AppState;
 use crate::db::ConnectionDb;
-use rocket::http::Status;
+use crate::dto::user_dto::UserName;
+use crate::error::app_error::AppError;
+use crate::models::user::User;
+use rocket::serde::json::Json;
+use tracing::instrument;
 
 #[get("/")]
-async fn index(app: &AppState, mut db: ConnectionDb) -> Result<String, (Status, String)> {
-    let users = app
-        .use_cases
-        .user
-        .get_all(&app.repos, &mut db)
-        .await
-        .map_err(|_| (Status::InternalServerError, "error".to_string()))?;
-    Ok(users.len().to_string())
+async fn index(app: &AppState, mut db: ConnectionDb) -> Result<Json<Vec<User>>, AppError> {
+    let users = app.use_cases.user.get_all(&app.repos, &mut db).await?;
+    Ok(Json(users))
 }
 
-#[post("/new")]
-async fn add(app: &AppState, mut db: ConnectionDb) -> Result<String, String> {
+#[post("/new", data = "<name>")]
+async fn add(
+    app: &AppState,
+    mut db: ConnectionDb,
+    name: Json<UserName>,
+) -> Result<Json<User>, AppError> {
+    let name = name.into_inner().name;
     let user = app
         .use_cases
         .user
-        .create(&app.repos, &mut db)
-        .await
-        .map_err(|_| "error".to_string())?;
-    Ok(user.name)
+        .create(&app.repos, &mut db, &name)
+        .await?;
+    Ok(Json(user))
+}
+
+#[put("/<id>", data = "<name>")]
+#[instrument(name = "user_controller/update", skip_all, fields(id = %id))]
+async fn update(
+    app: &AppState,
+    mut db: ConnectionDb,
+    id: i32,
+    name: Json<UserName>,
+) -> Result<Json<User>, AppError> {
+    let name = name.into_inner().name;
+    let user = app
+        .use_cases
+        .user
+        .update(&app.repos, &mut db, id, &name)
+        .await?;
+    Ok(Json(user))
+}
+
+#[delete("/<id>")]
+async fn delete(app: &AppState, mut db: ConnectionDb, id: i32) -> Result<(), AppError> {
+    app.use_cases.user.delete(&app.repos, &mut db, id).await?;
+    Ok(())
 }
 
 pub fn routes() -> Vec<rocket::Route> {
-    routes![index, add]
+    routes![index, add, update, delete]
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::app_err;
     use crate::config::Config;
     use crate::db::Db;
     use crate::test::app::create_app_for_test;
@@ -71,7 +98,7 @@ mod tests {
         let mut mock_user_use_case = MockUserUseCase::new();
         mock_user_use_case
             .expect_get_all()
-            .returning(|_, _| Err(sqlx::Error::RowNotFound));
+            .returning(|_, _| app_err!(500, "error"));
 
         let mut app_state = create_app_for_test();
         app_state.use_cases.user = Box::new(mock_user_use_case);

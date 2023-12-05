@@ -1,7 +1,11 @@
+use crate::app_err;
 use crate::db::DbCon;
-use crate::model::User;
+use crate::error::app_error::AppError;
+use crate::models::user::User;
+use crate::repositories::error::DbRepoError;
 use crate::repositories::repositories::Repos;
 use mockall::automock;
+use tracing::instrument;
 
 pub struct UserUseCaseImpl {}
 impl UserUseCaseImpl {
@@ -13,18 +17,74 @@ impl UserUseCaseImpl {
 #[automock]
 #[async_trait]
 pub trait UserUseCase: Send + Sync {
-    async fn get_all(&self, repos: &Repos, db_con: &mut DbCon) -> Result<Vec<User>, sqlx::Error>;
-    async fn create(&self, repos: &Repos, db_con: &mut DbCon) -> Result<User, sqlx::Error>;
+    async fn get_all(&self, repos: &Repos, db_con: &mut DbCon) -> Result<Vec<User>, AppError>;
+    async fn create(
+        &self,
+        repos: &Repos,
+        db_con: &mut DbCon,
+        name: &String,
+    ) -> Result<User, AppError>;
+    async fn update(
+        &self,
+        repos: &Repos,
+        db_con: &mut DbCon,
+        id: i32,
+        name: &String,
+    ) -> Result<User, AppError>;
+    async fn delete(&self, repos: &Repos, db_con: &mut DbCon, id: i32) -> Result<(), AppError>;
 }
 
 #[async_trait]
 impl UserUseCase for UserUseCaseImpl {
-    async fn get_all(&self, repos: &Repos, db_con: &mut DbCon) -> Result<Vec<User>, sqlx::Error> {
-        repos.user.find_all(&mut *db_con).await
+    async fn get_all(&self, repos: &Repos, db_con: &mut DbCon) -> Result<Vec<User>, AppError> {
+        repos
+            .user
+            .find_all(&mut *db_con)
+            .await
+            .map_err(|e| AppError::from(e))
     }
 
-    async fn create(&self, repos: &Repos, db_con: &mut DbCon) -> Result<User, sqlx::Error> {
-        repos.user.create(&mut *db_con).await
+    async fn create(
+        &self,
+        repos: &Repos,
+        db_con: &mut DbCon,
+        name: &String,
+    ) -> Result<User, AppError> {
+        repos
+            .user
+            .create(&mut *db_con, name)
+            .await
+            .map_err(|e| AppError::from(e))
+    }
+
+    #[instrument(name = "user_use_case/update", skip_all, fields(id = %id))]
+    async fn update(
+        &self,
+        repos: &Repos,
+        db_con: &mut DbCon,
+        id: i32,
+        name: &String,
+    ) -> Result<User, AppError> {
+        match repos.user.update(&mut *db_con, id, name).await {
+            Ok(user) => Ok(user),
+            Err(e) => match &e {
+                DbRepoError::SqlxError(sqlx_error) => match sqlx_error {
+                    sqlx::Error::RowNotFound => {
+                        Err(AppError::BadRequest)
+                    }
+                    _ => Err(AppError::from(e)),
+                },
+                _ => Err(AppError::from(e)),
+            },
+        }
+    }
+
+    async fn delete(&self, repos: &Repos, db_con: &mut DbCon, id: i32) -> Result<(), AppError> {
+        repos
+            .user
+            .delete(&mut *db_con, id)
+            .await
+            .map_err(|e| AppError::from(e))
     }
 }
 

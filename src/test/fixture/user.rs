@@ -1,4 +1,4 @@
-use crate::models::user::User;
+use crate::models::user_model::User;
 
 pub fn user_fixture(id: usize) -> User {
     User {

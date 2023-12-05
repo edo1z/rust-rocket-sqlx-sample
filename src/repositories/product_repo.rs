@@ -1,9 +1,9 @@
-use crate::models::product::Product;
+use crate::log_into;
+use crate::models::product_model::Product;
 use crate::repositories::error::DbRepoError;
 use mockall::automock;
 use sqlx::{query, query_as, PgConnection};
 use tracing::instrument;
-use crate::log_into;
 
 pub struct ProductRepoImpl {}
 impl ProductRepoImpl {
@@ -91,5 +91,56 @@ impl ProductRepo for ProductRepoImpl {
             .await
             .map_err(|e| log_into!(e, DbRepoError))?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::repositories::product_repo::{ProductRepo, ProductRepoImpl};
+    use crate::test::db::create_db_con_for_test;
+    use crate::test::repositories::prepare::product::create_product;
+    use sqlx::Connection;
+
+    #[tokio::test]
+    async fn test_create_product() {
+        let mut db_con = create_db_con_for_test().await.unwrap();
+        let mut tx = db_con.begin().await.unwrap();
+        let result = create_product(&mut tx).await;
+        assert!(result.is_ok());
+        tx.rollback().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_find_product_by_id() {
+        let mut db_con = create_db_con_for_test().await.unwrap();
+        let mut tx = db_con.begin().await.unwrap();
+        let product = create_product(&mut tx).await.unwrap();
+        let repo = ProductRepoImpl::new();
+        let result = repo.find_by_id(&mut tx, product.id).await;
+        assert!(result.is_ok());
+        tx.rollback().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_update_product() {
+        let mut db_con = create_db_con_for_test().await.unwrap();
+        let mut tx = db_con.begin().await.unwrap();
+        let product = create_product(&mut tx).await.unwrap();
+        let repo = ProductRepoImpl::new();
+        let new_name = "new_name".to_string();
+        let result = repo.update(&mut tx, product.id, &new_name).await;
+        assert!(result.is_ok());
+        tx.rollback().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_delete_product() {
+        let mut db_con = create_db_con_for_test().await.unwrap();
+        let mut tx = db_con.begin().await.unwrap();
+        let product = create_product(&mut tx).await.unwrap();
+        let repo = ProductRepoImpl::new();
+        let result = repo.delete(&mut tx, product.id).await;
+        assert!(result.is_ok());
+        tx.rollback().await.unwrap();
     }
 }

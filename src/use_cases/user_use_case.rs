@@ -1,7 +1,6 @@
-use crate::app_err;
 use crate::db::DbCon;
 use crate::error::app_error::AppError;
-use crate::models::user::User;
+use crate::models::user_model::User;
 use crate::repositories::error::DbRepoError;
 use crate::repositories::repositories::Repos;
 use mockall::automock;
@@ -17,7 +16,7 @@ impl UserUseCaseImpl {
 #[automock]
 #[async_trait]
 pub trait UserUseCase: Send + Sync {
-    async fn get_all(&self, repos: &Repos, db_con: &mut DbCon) -> Result<Vec<User>, AppError>;
+    async fn find_all(&self, repos: &Repos, db_con: &mut DbCon) -> Result<Vec<User>, AppError>;
     async fn create(
         &self,
         repos: &Repos,
@@ -36,7 +35,8 @@ pub trait UserUseCase: Send + Sync {
 
 #[async_trait]
 impl UserUseCase for UserUseCaseImpl {
-    async fn get_all(&self, repos: &Repos, db_con: &mut DbCon) -> Result<Vec<User>, AppError> {
+    #[instrument(name = "user_use_case/find_all", skip_all)]
+    async fn find_all(&self, repos: &Repos, db_con: &mut DbCon) -> Result<Vec<User>, AppError> {
         repos
             .user
             .find_all(&mut *db_con)
@@ -44,6 +44,7 @@ impl UserUseCase for UserUseCaseImpl {
             .map_err(|e| AppError::from(e))
     }
 
+    #[instrument(name = "user_use_case/create", skip_all)]
     async fn create(
         &self,
         repos: &Repos,
@@ -69,9 +70,7 @@ impl UserUseCase for UserUseCaseImpl {
             Ok(user) => Ok(user),
             Err(e) => match &e {
                 DbRepoError::SqlxError(sqlx_error) => match sqlx_error {
-                    sqlx::Error::RowNotFound => {
-                        Err(AppError::BadRequest)
-                    }
+                    sqlx::Error::RowNotFound => Err(AppError::BadRequest),
                     _ => Err(AppError::from(e)),
                 },
                 _ => Err(AppError::from(e)),
@@ -79,6 +78,7 @@ impl UserUseCase for UserUseCaseImpl {
         }
     }
 
+    #[instrument(name = "user_use_case/delete", skip_all, fields(id = %id))]
     async fn delete(&self, repos: &Repos, db_con: &mut DbCon, id: i32) -> Result<(), AppError> {
         repos
             .user
@@ -97,7 +97,7 @@ mod tests {
     use crate::test::fixture::user::users_fixture;
 
     #[rocket::async_test]
-    async fn test_get_all() {
+    async fn test_find_all() {
         let mut mock_user_repo = MockUserRepo::new();
         mock_user_repo
             .expect_find_all()
@@ -106,7 +106,7 @@ mod tests {
         repos.user = Box::new(mock_user_repo);
         let mut db_con = create_db_con_for_test().await.unwrap();
         let user_use_case = UserUseCaseImpl::new();
-        let users = user_use_case.get_all(&repos, &mut db_con).await;
+        let users = user_use_case.find_all(&repos, &mut db_con).await;
         assert!(users.is_ok());
         assert_eq!(users.unwrap().len(), 5);
     }

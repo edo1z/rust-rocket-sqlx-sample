@@ -1,4 +1,4 @@
-use crate::models::product::Product;
+use crate::models::product_model::Product;
 
 pub fn product_fixture(id: usize) -> Product {
     Product {

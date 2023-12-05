@@ -1,5 +1,5 @@
 use crate::log_into;
-use crate::models::user::User;
+use crate::models::user_model::User;
 use crate::repositories::error::DbRepoError;
 use mockall::automock;
 use sqlx::{query, query_as, PgConnection};
@@ -92,5 +92,56 @@ impl UserRepo for UserRepoImpl {
             .await
             .map_err(|e| log_into!(e, DbRepoError))?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::repositories::user_repo::{UserRepo, UserRepoImpl};
+    use crate::test::db::create_db_con_for_test;
+    use crate::test::repositories::prepare::user::create_user;
+    use sqlx::Connection;
+
+    #[tokio::test]
+    async fn test_create_user() {
+        let mut db_con = create_db_con_for_test().await.unwrap();
+        let mut tx = db_con.begin().await.unwrap();
+        let result = create_user(&mut tx).await;
+        assert!(result.is_ok());
+        tx.rollback().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_find_user_by_id() {
+        let mut db_con = create_db_con_for_test().await.unwrap();
+        let mut tx = db_con.begin().await.unwrap();
+        let user = create_user(&mut tx).await.unwrap();
+        let repo = UserRepoImpl::new();
+        let result = repo.find_by_id(&mut tx, user.id).await;
+        assert!(result.is_ok());
+        tx.rollback().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_update_user() {
+        let mut db_con = create_db_con_for_test().await.unwrap();
+        let mut tx = db_con.begin().await.unwrap();
+        let user = create_user(&mut tx).await.unwrap();
+        let repo = UserRepoImpl::new();
+        let new_name = "new_name".to_string();
+        let result = repo.update(&mut tx, user.id, &new_name).await;
+        assert!(result.is_ok());
+        tx.rollback().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_delete_user() {
+        let mut db_con = create_db_con_for_test().await.unwrap();
+        let mut tx = db_con.begin().await.unwrap();
+        let user = create_user(&mut tx).await.unwrap();
+        let repo = UserRepoImpl::new();
+        let result = repo.delete(&mut tx, user.id).await;
+        assert!(result.is_ok());
+        tx.rollback().await.unwrap();
     }
 }

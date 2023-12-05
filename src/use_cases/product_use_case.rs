@@ -1,9 +1,9 @@
-use crate::app_err;
 use crate::db::DbCon;
 use crate::error::app_error::AppError;
-use crate::models::product::Product;
+use crate::models::product_model::Product;
 use crate::repositories::repositories::Repos;
 use mockall::automock;
+use tracing::instrument;
 
 pub struct ProductUseCaseImpl {}
 
@@ -22,11 +22,12 @@ pub trait ProductUseCase: Send + Sync {
         db_con: &mut DbCon,
         name: &String,
     ) -> Result<Product, AppError>;
-    async fn get_all(&self, repos: &Repos, db_con: &mut DbCon) -> Result<Vec<Product>, AppError>;
+    async fn find_all(&self, repos: &Repos, db_con: &mut DbCon) -> Result<Vec<Product>, AppError>;
 }
 
 #[async_trait]
 impl ProductUseCase for ProductUseCaseImpl {
+    #[instrument(name = "product_use_case/create", skip_all)]
     async fn create(
         &self,
         repos: &Repos,
@@ -37,7 +38,8 @@ impl ProductUseCase for ProductUseCaseImpl {
         Ok(product)
     }
 
-    async fn get_all(&self, repos: &Repos, db_con: &mut DbCon) -> Result<Vec<Product>, AppError> {
+    #[instrument(name = "product_use_case/find_all", skip_all)]
+    async fn find_all(&self, repos: &Repos, db_con: &mut DbCon) -> Result<Vec<Product>, AppError> {
         let products = repos.product.find_all(&mut *db_con).await?;
         Ok(products)
     }

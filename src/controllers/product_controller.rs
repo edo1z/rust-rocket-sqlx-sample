@@ -2,16 +2,19 @@ use crate::app::AppState;
 use crate::db::ConnectionDb;
 use crate::dto::product_dto::ProductName;
 use crate::error::app_error::AppError;
-use crate::models::product::Product;
+use crate::models::product_model::Product;
 use rocket::serde::json::Json;
+use tracing::instrument;
 
 #[get("/")]
+#[instrument(name = "product_controller/index", skip_all)]
 async fn index(app: &AppState, mut db: ConnectionDb) -> Result<Json<Vec<Product>>, AppError> {
-    let products = app.use_cases.product.get_all(&app.repos, &mut db).await?;
+    let products = app.use_cases.product.find_all(&app.repos, &mut db).await?;
     Ok(Json(products))
 }
 
-#[post("/new", data = "<name>")]
+#[post("/add", data = "<name>")]
+#[instrument(name = "product_controller/add", skip_all)]
 async fn add(
     app: &AppState,
     mut db: ConnectionDb,
@@ -48,7 +51,7 @@ mod tests {
     async fn test_index_success() {
         let mut mock_product_use_case = MockProductUseCase::new();
         mock_product_use_case
-            .expect_get_all()
+            .expect_find_all()
             .returning(|_, _| Ok(products_fixture(5)));
 
         let mut app_state = create_app_for_test();
@@ -71,7 +74,7 @@ mod tests {
     async fn test_index_fail() {
         let mut mock_product_use_case = MockProductUseCase::new();
         mock_product_use_case
-            .expect_get_all()
+            .expect_find_all()
             .returning(|_, _| app_err!(500, "error"));
 
         let mut app_state = create_app_for_test();
